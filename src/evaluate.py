@@ -116,57 +116,59 @@ def plot_actual_vs_predicted(models, X_test, y_test, name_prefix, title_suffix):
 
 # ─── GRAPH 2: Feature Importance Heatmap ──────────────────────────────────
 def plot_feature_importance_heatmap(bundle):
-    # Using Polymer models for feature importance visualization as they are the primary focus
-    models = bundle["polymer"]
-    fi_data = {}
-    for target in TARGET_COLS:
-        fi_data[target] = models[target]["rf_fi"]
+    for class_label in ["polymer", "alloy"]:
+        models = bundle[class_label]
+        fi_data = {}
+        for target in TARGET_COLS:
+            fi_data[target] = models[target]["rf_fi"]
 
-    fi_df = pd.DataFrame(fi_data, index=FEATURE_COLS).T
-    fi_df.index = [TARGET_META[t][0] for t in TARGET_COLS]
-    fi_df.columns = [c.replace("_", " ").title() for c in FEATURE_COLS]
+        fi_df = pd.DataFrame(fi_data, index=FEATURE_COLS).T
+        fi_df.index = [TARGET_META[t][0] for t in TARGET_COLS]
+        fi_df.columns = [c.replace("_", " ").title() for c in FEATURE_COLS]
 
-    fig, ax = plt.subplots(figsize=(13, 7))
-    sns.heatmap(fi_df, annot=True, fmt=".2f", cmap="YlGn",
-                linewidths=0.4, linecolor="white",
-                annot_kws={"size": 7.5}, ax=ax, cbar_kws={"shrink": 0.7})
-    ax.set_title("Feature Importance Heatmap — All 10 Target Properties",
-                 fontsize=13, fontweight="bold", pad=12)
-    ax.set_xlabel("Input Feature", fontsize=10)
-    ax.set_ylabel("Predicted Property", fontsize=10)
-    ax.tick_params(axis="x", rotation=30, labelsize=8)
-    ax.tick_params(axis="y", rotation=0, labelsize=8)
-    plt.tight_layout()
-    path = os.path.join(RESULTS_DIR, "02_feature_importance_heatmap.png")
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"[evaluate] Graph 2 saved → {path}")
+        fig, ax = plt.subplots(figsize=(13, 7))
+        sns.heatmap(fi_df, annot=True, fmt=".2f", cmap="YlGn",
+                    linewidths=0.4, linecolor="white",
+                    annot_kws={"size": 7.5}, ax=ax, cbar_kws={"shrink": 0.7})
+        ax.set_title(f"Feature Importance Heatmap — {class_label.upper()}",
+                     fontsize=13, fontweight="bold", pad=12)
+        ax.set_xlabel("Input Feature", fontsize=10)
+        ax.set_ylabel("Predicted Property", fontsize=10)
+        ax.tick_params(axis="x", rotation=30, labelsize=8)
+        ax.tick_params(axis="y", rotation=0, labelsize=8)
+        plt.tight_layout()
+        path = os.path.join(RESULTS_DIR, f"02_feature_importance_heatmap_{class_label}s.png")
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+        print(f"[evaluate] Graph 2 saved → {path}")
 
 
 # ─── GRAPH 3: Property Correlation Matrix ─────────────────────────────────
 def plot_correlation_matrix():
     df  = pd.read_csv(RAW_CSV)
-    sub = df[TARGET_COLS].copy()
-    sub.columns = [TARGET_META[t][0] for t in TARGET_COLS]
+    
+    for class_label in ["polymer", "alloy"]:
+        sub = df[df["material_class"] == class_label][TARGET_COLS].copy()
+        sub.columns = [TARGET_META[t][0] for t in TARGET_COLS]
 
-    corr = sub.corr()
-    mask = np.triu(np.ones_like(corr, dtype=bool), k=1)
+        corr = sub.corr()
+        mask = np.triu(np.ones_like(corr, dtype=bool), k=1)
 
-    fig, ax = plt.subplots(figsize=(11, 9))
-    sns.heatmap(corr, mask=mask, annot=True, fmt=".2f",
-                cmap="RdYlGn", center=0, vmin=-1, vmax=1,
-                linewidths=0.5, linecolor="white",
-                annot_kws={"size": 7.5}, ax=ax,
-                cbar_kws={"shrink": 0.75, "label": "Pearson r"})
-    ax.set_title("Property Correlation Matrix — All 10 Properties",
-                 fontsize=13, fontweight="bold", pad=12)
-    ax.tick_params(axis="x", rotation=35, labelsize=8)
-    ax.tick_params(axis="y", rotation=0, labelsize=8)
-    plt.tight_layout()
-    path = os.path.join(RESULTS_DIR, "03_property_correlation_matrix.png")
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"[evaluate] Graph 3 saved → {path}")
+        fig, ax = plt.subplots(figsize=(11, 9))
+        sns.heatmap(corr, mask=mask, annot=True, fmt=".2f",
+                    cmap="RdYlGn", center=0, vmin=-1, vmax=1,
+                    linewidths=0.5, linecolor="white",
+                    annot_kws={"size": 7.5}, ax=ax,
+                    cbar_kws={"shrink": 0.75, "label": "Pearson r"})
+        ax.set_title(f"Property Correlation Matrix — {class_label.upper()}",
+                     fontsize=13, fontweight="bold", pad=12)
+        ax.tick_params(axis="x", rotation=35, labelsize=8)
+        ax.tick_params(axis="y", rotation=0, labelsize=8)
+        plt.tight_layout()
+        path = os.path.join(RESULTS_DIR, f"03_property_correlation_matrix_{class_label}s.png")
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+        print(f"[evaluate] Graph 3 saved → {path}")
 
 
 # ─── GRAPH 4: Eco-Score vs Key Properties ─────────────────────────────────

@@ -5,7 +5,8 @@ import Tilt from 'react-parallax-tilt';
 import Orb from './components/Orb';
 import './index.css';
 
-const API = import.meta.env.VITE_API_URL || '';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API = import.meta.env.VITE_API_URL || (isLocal ? 'http://127.0.0.1:8000' : '');
 
 const PETROLEUM_MATERIALS = [
   'ABS (conventional)', 'HDPE (conventional)', 'LCP (Liquid Crystal Polymer)',

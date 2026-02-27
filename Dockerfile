@@ -19,7 +19,7 @@ RUN npm install && npm run build
 
 # Generate dataset and train models
 WORKDIR /app
-RUN python scripts/perfect_dataset.py && make train
+RUN python scripts/perfect_dataset.py && python src/train.py
 
 # Expose port
 EXPOSE 8000

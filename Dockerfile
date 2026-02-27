@@ -25,4 +25,4 @@ RUN python scripts/perfect_dataset.py && python src/train.py
 EXPOSE 8000
 
 # Start FastAPI server
-CMD ["sh", "-c", "uvicorn src.api:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "python -m uvicorn src.api:app --host 0.0.0.0 --port ${PORT:-8000}"]

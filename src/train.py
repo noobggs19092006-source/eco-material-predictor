@@ -55,36 +55,35 @@ def train_single_target(X_train, y_train, X_val, y_val, target, seed=42, label="
     best_rf = {"n_estimators": 200, "max_depth": 15, "min_samples_split": 2, "max_features": "sqrt"}
     best_xgb = {"n_estimators": 200, "max_depth": 5, "learning_rate": 0.05, "subsample": 0.8}
 
-    # OOF stacking on training data
-    kf      = KFold(n_splits=n_cv, shuffle=True, random_state=seed)
-    n       = len(X_train)
-    oof_rf  = np.zeros(n)
-    oof_xgb = np.zeros(n)
+    # Fast split stacking (no KFold to save memory/time on Render)
+    n = len(X_train)
+    split_idx = int(n * 0.8)
+    
     X_arr   = X_train.values if hasattr(X_train, "values") else X_train
     y_arr   = y_train.values if hasattr(y_train, "values") else y_train
+    
+    X_tr_sub, y_tr_sub = X_arr[:split_idx], y_arr[:split_idx]
+    X_val_sub, y_val_sub = X_arr[split_idx:], y_arr[split_idx:]
+    
+    rf_f = RandomForestRegressor(**best_rf, random_state=seed, n_jobs=1)
+    rf_f.fit(X_tr_sub, y_tr_sub)
+    oof_rf_val = rf_f.predict(X_val_sub)
+    
+    xg_f = XGBRegressor(**best_xgb, random_state=seed, tree_method="hist", verbosity=0)
+    xg_f.fit(X_tr_sub, y_tr_sub)
+    oof_xgb_val = xg_f.predict(X_val_sub)
+    
+    meta = Ridge(alpha=0.5)
+    meta.fit(np.column_stack([oof_rf_val, oof_xgb_val]), y_val_sub)
 
-    for tr_idx, val_idx in kf.split(X_arr):
-        rf_f = RandomForestRegressor(**best_rf, random_state=seed, n_jobs=1)
-        rf_f.fit(X_arr[tr_idx], y_arr[tr_idx])
-        oof_rf[val_idx] = rf_f.predict(X_arr[val_idx])
+    # (OOF R2 is not calculated for the full train set anymore in fast mode)
+    oof_r2 = 0.0
 
-        xg_f = XGBRegressor(**best_xgb, random_state=seed,
-                             tree_method="hist", verbosity=0)
-        xg_f.fit(X_arr[tr_idx], y_arr[tr_idx])
-        oof_xgb[val_idx] = xg_f.predict(X_arr[val_idx])
-
-    # Final models on full training data
+    # Train final models on the entire full train set for actual inference
     final_rf  = RandomForestRegressor(**best_rf, random_state=seed, n_jobs=1)
     final_rf.fit(X_train, y_train)
-    final_xgb = XGBRegressor(**best_xgb, random_state=seed,
-                              tree_method="hist", verbosity=0)
+    final_xgb = XGBRegressor(**best_xgb, random_state=seed, tree_method="hist", verbosity=0)
     final_xgb.fit(X_train, y_train)
-
-    meta = Ridge(alpha=0.5)
-    meta.fit(np.column_stack([oof_rf, oof_xgb]), y_arr)
-
-    # Report metrics on both train (OOF) and validation (honest)
-    oof_r2 = r2_score(y_arr, meta.predict(np.column_stack([oof_rf, oof_xgb])))
 
     # Validation score (honest, unseen during training)
     val_pred = meta.predict(np.column_stack([

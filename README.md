@@ -220,6 +220,32 @@ print(result["confidence"])
 
 ---
 
+## 🌍 Deploy to the Web
+
+You can easily deploy the Eco-Material Predictor live on the web so anyone can access it during your presentation. We have included a `Dockerfile` and `render.yaml` to make this seamless on Render.
+
+### Deploy to Render (Free — Recommended)
+
+1. **Push your code to GitHub:**
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial Eco-Material Predictor deployment"
+   git remote add origin https://github.com/YOUR_USERNAME/eco-material-predictor.git
+   git branch -M main
+   git push -u origin main
+   ```
+
+2. **Go to [render.com](https://render.com)** → "New" → "Web Service"
+
+3. **Connect your GitHub repo**
+
+4. **Render handles the rest automatically!**
+   - Render will read the `render.yaml` and `Dockerfile`.
+   - It will install Python & Node.js, build the React frontend, train the core ML engine, and host the web interface on a live URL.
+
+---
+
 ## 🛠 Commands Reference
 
 | Command | Action |

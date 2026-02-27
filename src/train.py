@@ -53,9 +53,9 @@ def train_single_target(X_train, y_train, X_val, y_val, target, seed=42, label="
     n_cv = min(5, max(3, len(X_train) // 6))
 
     rf_search = RandomizedSearchCV(
-        RandomForestRegressor(random_state=seed, n_jobs=-1),
+        RandomForestRegressor(random_state=seed, n_jobs=1),
         RF_PARAM_GRID, n_iter=25, cv=n_cv, scoring="r2",
-        random_state=seed, n_jobs=-1, verbose=0
+        random_state=seed, n_jobs=1, verbose=0
     )
     rf_search.fit(X_train, y_train)
     best_rf = rf_search.best_params_
@@ -63,7 +63,7 @@ def train_single_target(X_train, y_train, X_val, y_val, target, seed=42, label="
     xgb_search = RandomizedSearchCV(
         XGBRegressor(random_state=seed, tree_method="hist", verbosity=0),
         XGB_PARAM_GRID, n_iter=25, cv=n_cv, scoring="r2",
-        random_state=seed, n_jobs=-1, verbose=0
+        random_state=seed, n_jobs=1, verbose=0
     )
     xgb_search.fit(X_train, y_train)
     best_xgb = xgb_search.best_params_
@@ -77,7 +77,7 @@ def train_single_target(X_train, y_train, X_val, y_val, target, seed=42, label="
     y_arr   = y_train.values if hasattr(y_train, "values") else y_train
 
     for tr_idx, val_idx in kf.split(X_arr):
-        rf_f = RandomForestRegressor(**best_rf, random_state=seed, n_jobs=-1)
+        rf_f = RandomForestRegressor(**best_rf, random_state=seed, n_jobs=1)
         rf_f.fit(X_arr[tr_idx], y_arr[tr_idx])
         oof_rf[val_idx] = rf_f.predict(X_arr[val_idx])
 
@@ -87,7 +87,7 @@ def train_single_target(X_train, y_train, X_val, y_val, target, seed=42, label="
         oof_xgb[val_idx] = xg_f.predict(X_arr[val_idx])
 
     # Final models on full training data
-    final_rf  = RandomForestRegressor(**best_rf, random_state=seed, n_jobs=-1)
+    final_rf  = RandomForestRegressor(**best_rf, random_state=seed, n_jobs=1)
     final_rf.fit(X_train, y_train)
     final_xgb = XGBRegressor(**best_xgb, random_state=seed,
                               tree_method="hist", verbosity=0)

@@ -97,14 +97,8 @@ def ask_int(q, lo, hi):
             console.print("  [red]✗[/red] Enter a whole number")
 
 
-def collect_features():
-    console.print(Rule("[bold green]Step 1 — Material Class[/bold green]"))
-    mat_class = questionary.select(
-        "Material class:", style=STYLE,
-        choices=["Polymer / Biopolymer", "Metal Alloy"]
-    ).ask()
-    is_alloy = 1 if "Alloy" in mat_class else 0
-
+def collect_features(is_alloy):
+    is_alloy = 1 if is_alloy else 0
     console.print()
     console.print(Rule("[bold green]Step 2 — Molecular Properties[/bold green]"))
 
@@ -283,7 +277,14 @@ def _predict_mode():
     banner()
     while True:
         try:
-            features = collect_features()
+            material_class = questionary.select(
+                "  Material class:",
+                choices=["🧪 Polymer (eco-plastic)", "⚙️  Metal Alloy"],
+                style=STYLE,
+            ).ask()
+            if material_class is None:
+                break
+            features = collect_features(1 if "Alloy" in material_class else 0)
         except (KeyboardInterrupt, EOFError):
             break
 

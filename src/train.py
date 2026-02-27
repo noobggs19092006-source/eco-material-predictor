@@ -52,21 +52,8 @@ def train_single_target(X_train, y_train, X_val, y_val, target, seed=42, label="
 
     n_cv = min(5, max(3, len(X_train) // 6))
 
-    rf_search = RandomizedSearchCV(
-        RandomForestRegressor(random_state=seed, n_jobs=1),
-        RF_PARAM_GRID, n_iter=3, cv=n_cv, scoring="r2",
-        random_state=seed, n_jobs=1, verbose=0
-    )
-    rf_search.fit(X_train, y_train)
-    best_rf = rf_search.best_params_
-
-    xgb_search = RandomizedSearchCV(
-        XGBRegressor(random_state=seed, tree_method="hist", verbosity=0),
-        XGB_PARAM_GRID, n_iter=3, cv=n_cv, scoring="r2",
-        random_state=seed, n_jobs=1, verbose=0
-    )
-    xgb_search.fit(X_train, y_train)
-    best_xgb = xgb_search.best_params_
+    best_rf = {"n_estimators": 200, "max_depth": 15, "min_samples_split": 2, "max_features": "sqrt"}
+    best_xgb = {"n_estimators": 200, "max_depth": 5, "learning_rate": 0.05, "subsample": 0.8}
 
     # OOF stacking on training data
     kf      = KFold(n_splits=n_cv, shuffle=True, random_state=seed)

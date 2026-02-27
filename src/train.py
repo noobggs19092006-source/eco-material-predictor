@@ -54,7 +54,7 @@ def train_single_target(X_train, y_train, X_val, y_val, target, seed=42, label="
 
     rf_search = RandomizedSearchCV(
         RandomForestRegressor(random_state=seed, n_jobs=1),
-        RF_PARAM_GRID, n_iter=25, cv=n_cv, scoring="r2",
+        RF_PARAM_GRID, n_iter=3, cv=n_cv, scoring="r2",
         random_state=seed, n_jobs=1, verbose=0
     )
     rf_search.fit(X_train, y_train)
@@ -62,7 +62,7 @@ def train_single_target(X_train, y_train, X_val, y_val, target, seed=42, label="
 
     xgb_search = RandomizedSearchCV(
         XGBRegressor(random_state=seed, tree_method="hist", verbosity=0),
-        XGB_PARAM_GRID, n_iter=25, cv=n_cv, scoring="r2",
+        XGB_PARAM_GRID, n_iter=3, cv=n_cv, scoring="r2",
         random_state=seed, n_jobs=1, verbose=0
     )
     xgb_search.fit(X_train, y_train)

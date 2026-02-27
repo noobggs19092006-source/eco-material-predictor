@@ -17,9 +17,9 @@ WORKDIR /app/frontend
 # Add a dummy build command or just standard npm run build
 RUN npm install && npm run build
 
-# Generate dataset and train models
+# Generate dataset (skip training, use pre-trained models from repo)
 WORKDIR /app
-RUN python scripts/perfect_dataset.py && python src/train.py
+RUN python scripts/perfect_dataset.py
 
 # Expose port
 EXPOSE 8000

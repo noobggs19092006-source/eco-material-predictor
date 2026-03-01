@@ -1,0 +1,29 @@
+REMARK  Eco-Material Predictor — Molecular Structure PDB
+REMARK  Material : Poly(Lactic Acid) repeat unit
+REMARK  Formula  : C3H4O2
+REMARK  Eco Score: 1.0
+REMARK  
+REMARK  VMD Tips:
+REMARK    1. vmd molecule.pdb
+REMARK    2. Graphics → Representations → Drawing Method → Licorice
+REMARK    3. Coloring Method → Element  (C=cyan, O=red, H=white, N=blue)
+REMARK  
+HETATM    1  CA  PLA A   1       0.000   0.000   0.000  1.00  0.00           C
+HETATM    2  CM  PLA A   1      -0.513   1.452   0.000  1.00  0.00           C
+HETATM    3  CC  PLA A   1       1.524   0.000   0.000  1.00  0.00           C
+HETATM    4  O1  PLA A   1       2.124   1.039   0.000  1.00  0.00           O
+HETATM    5  O2  PLA A   1       2.204  -1.178   0.000  1.00  0.00           O
+HETATM    6  HA  PLA A   1      -0.363  -0.513   0.889  1.00  0.00           H
+HETATM    7  HM1 PLA A   1      -1.603   1.360   0.000  1.00  0.00           H
+HETATM    8  HM2 PLA A   1      -0.168   1.975   0.889  1.00  0.00           H
+HETATM    9  HM3 PLA A   1      -0.168   1.975  -0.889  1.00  0.00           H
+CONECT    1    2    3    6
+CONECT    2    1    7    8    9
+CONECT    3    1    4    5
+CONECT    4    3
+CONECT    5    3
+CONECT    6    1
+CONECT    7    2
+CONECT    8    2
+CONECT    9    2
+END

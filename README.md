@@ -180,15 +180,25 @@ Two separate ensembles: POLYMER model (100 samples) + ALLOY model (99 samples)
 
 ## 🧪 Dataset
 
-**Massive Dual-Data Pipeline** curated from deeply specialized sources:
-- **Polymers (285 samples)**: Published QSPR literature, Matmatch, and CAMPUS Plastics databases.
-- **Metal Alloys (4,666+ samples)**: 5 merged Kaggle datasets (including High-Entropy Alloys, Titanium bases, and Matminer) dynamically tracking **40 unique elemental compositions** across *any* generic metallic structure.
+**800 rows** — 400 bio-based polymers + 400 eco-rated metal alloys.
 
-Properties generated via `scripts/perfect_dataset.py` using scientifically-grounded QSPR formulas + **2% realistic measurement noise** (simulates actual lab uncertainty), then split 70/10/20 to ensure honest, reproducible R² evaluation with **zero data leakage**.
+Generated via `scripts/perfect_dataset.py` using peer-reviewed QSPR
+formulas (Brandrup & Immergut 1999; van Krevelen 2009; Ashby 2011)
+with 4–8% Gaussian noise matching real lab measurement uncertainty.
+
+**Every row includes:**
+- 10 input molecular/structural features
+- 10 predicted material properties
+- `carbon_footprint_kgCO2_per_kg` — from ICE Database v2.0 (Univ. Bath)
+- `carbon_saving_vs_conventional_pct` — vs petroleum-based equivalent
+- `data_source` — full provenance label
+
+**Model validation:** 5-Fold CV (not a single train/test split)
+reports mean ± std R² so scores are statistically meaningful.
 
 ---
 
-## � VMD Visualization Tips
+## VMD Visualization Tips
 
 The generated `.pdb` files from `make predict` can be visualized in VMD. By default, VMD uses a simple "Lines" representation. For a professional, high-quality look:
 1. Open VMD and load your `.pdb` file.

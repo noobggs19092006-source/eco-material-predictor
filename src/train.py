@@ -21,7 +21,7 @@ def train_single_target(X_train, y_train, X_val, y_val, target, seed=42, label="
     print(f"\n  ┌─ [{label or target}]")
 
     # Symmetric hyperparameters for dual 4000-sample sets
-    best_rf = {"n_estimators": 200, "max_depth": 10, "min_samples_split": 4, "max_features": "sqrt"}
+    best_rf = {"n_estimators": 40, "max_depth": 8, "min_samples_split": 5, "min_samples_leaf": 2, "max_features": "sqrt"}
     best_xgb = {"n_estimators": 200, "max_depth": 7, "learning_rate": 0.05, "subsample": 0.8}
 
     n = len(X_train)

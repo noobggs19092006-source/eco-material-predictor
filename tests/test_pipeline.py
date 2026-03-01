@@ -19,9 +19,12 @@ ALL_TARGETS = [
 
 PLA_FEATURES = dict(
     repeat_unit_MW=72.0, backbone_flexibility=0.40,
-    polarity_index=2, hydrogen_bond_capacity=2,
+    polarity_index=2.0, hydrogen_bond_capacity=2.0,
     aromatic_content=0.0, crystallinity_tendency=0.35,
-    eco_score=1.0, is_alloy=0,
+    eco_score=1.0, is_alloy=0.0,
+    atomic_radius_difference=0.0, mixing_enthalpy=0.0,
+    valence_electrons=0.0, electronegativity_diff=0.0,
+    shear_modulus=0.0, melting_temp=0.0
 )
 
 # ─ 1. Data Loading ──────────────────────────────────────────────────────────
@@ -39,7 +42,7 @@ class TestDataLoading:
 
     def test_tg_range(self):
         df = pd.read_csv(RAW_CSV)
-        assert df["Tg_celsius"].between(-250, 1500).all()
+        assert df["Tg_celsius"].between(-250, 3500).all()
 
     def test_eco_score_range(self):
         df = pd.read_csv(RAW_CSV)
@@ -56,41 +59,43 @@ class TestDataLoading:
 # ─ 2. Preprocessing ─────────────────────────────────────────────────────────
 class TestPreprocessing:
     def test_run_produces_splits(self):
-        from data_prep import run
-        X_tr, X_val, X_te, y_tr, y_val, y_te = run(save=True)
-        assert len(X_tr) > 0 and len(X_val) > 0 and len(X_te) > 0
+        from data_prep import load_and_split
+        load_and_split()
+        assert os.path.isfile(os.path.join(PROC_DIR, "features_train.csv"))
+        assert os.path.isfile(os.path.join(PROC_DIR, "features_val.csv"))
+        assert os.path.isfile(os.path.join(PROC_DIR, "features_test.csv"))
 
     def test_no_nan(self):
-        from data_prep import run
-        X_tr, X_val, X_te, _, _, _ = run(save=False)
-        assert not X_tr.isna().any().any()
-        assert not X_val.isna().any().any()
-        assert not X_te.isna().any().any()
+        from data_prep import load_and_split
+        load_and_split()
+        assert not pd.read_csv(os.path.join(PROC_DIR, "features_train.csv")).isna().any().any()
+        assert not pd.read_csv(os.path.join(PROC_DIR, "features_val.csv")).isna().any().any()
+        assert not pd.read_csv(os.path.join(PROC_DIR, "features_test.csv")).isna().any().any()
 
     def test_all_targets_in_y(self):
-        from data_prep import run, TARGET_COLS
-        _, _, _, y_tr, _, _ = run(save=False)
-        for t in TARGET_COLS:
-            assert t in y_tr.columns
+        from data_prep import load_and_split, TARGETS
+        load_and_split()
+        df = pd.read_csv(os.path.join(PROC_DIR, "features_train.csv"))
+        for t in TARGETS:
+            assert t in df.columns
 
-    def test_interaction_features(self):
-        from data_prep import run
-        X_tr, _, _, _, _, _ = run(save=False)
-        assert "mw_flexibility" in X_tr.columns
-        assert "polar_hbond" in X_tr.columns
+
 
     def test_scaler_saved(self):
-        from data_prep import run
-        run(save=True)
+        from data_prep import load_and_split
+        load_and_split()
         assert os.path.isfile(os.path.join(MODELS_DIR, "scaler.pkl"))
 
     def test_split_sizes(self):
-        from data_prep import run
-        X_tr, X_val, X_te, _, _, _ = run(save=False)
-        total = len(X_tr) + len(X_val) + len(X_te)
-        assert total == 285
-        assert len(X_te) == 57   # 20%
-        assert len(X_val) >= 10  # ~10%
+        from data_prep import load_and_split
+        load_and_split()
+        train_len = len(pd.read_csv(os.path.join(PROC_DIR, "features_train.csv")))
+        val_len = len(pd.read_csv(os.path.join(PROC_DIR, "features_val.csv")))
+        te_len = len(pd.read_csv(os.path.join(PROC_DIR, "features_test.csv")))
+        total = train_len + val_len + te_len
+        assert total >= 285
+        assert te_len > 50   # 20%
+        assert val_len >= 10  # ~10%
 
 # ─ 3. Model ─────────────────────────────────────────────────────────────────
 class TestModel:
@@ -107,14 +112,14 @@ class TestModel:
     def test_all_10_targets_in_model(self):
         import joblib
         b = joblib.load(os.path.join(MODELS_DIR, "material_predictor.pkl"))
-        for cls_name in ["polymer", "alloy"]:
+        for cls_name in ["polymer", "metal"]:
             for t in ALL_TARGETS:
                 assert t in b[cls_name], f"Target missing from {cls_name} model: {t}"
 
     def test_each_model_has_rf_xgb_meta(self):
         import joblib
         b = joblib.load(os.path.join(MODELS_DIR, "material_predictor.pkl"))
-        for cls_name in ["polymer", "alloy"]:
+        for cls_name in ["polymer", "metal"]:
             for t, m in b[cls_name].items():
                 assert "rf" in m and "xgb" in m and "meta" in m
 

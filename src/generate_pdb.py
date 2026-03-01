@@ -410,9 +410,43 @@ def guess_material_key(features: dict) -> str:
         return "PHA"
 
 
+def get_metal_pdb(lattice_type="BCC", a=2.86):
+    lines = [
+        "REMARK  Eco-Material Predictor — Crystal Structure PDB",
+        f"REMARK  Material : Generic Metal Lattice ({lattice_type})",
+        "REMARK  "
+    ]
+    atoms = []
+    # Create a 2x2x2 unit cell block
+    for i in range(2):
+        for j in range(2):
+            for k in range(2):
+                atoms.append((i*a, j*a, k*a))
+                if i < 1 and j < 1 and k < 1:
+                    atoms.append(((i+0.5)*a, (j+0.5)*a, (k+0.5)*a))
+
+    for idx, (x, y, z) in enumerate(atoms, start=1):
+        lines.append(f"HETATM{idx:5d}  FE  MET A   1    {x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00          FE")
+    
+    lines.append("END")
+    return "\n".join(lines)
+
+
 import os
+import sys
 
 if __name__ == "__main__":
+    if len(sys.argv) >= 3:
+        key = sys.argv[1].upper()
+        out = sys.argv[2]
+        if key.startswith("METAL"):
+            pdb_str = get_metal_pdb()
+            with open(out, 'w') as f:
+                f.write(pdb_str)
+        else:
+            save_pdb(key, out)
+        sys.exit(0)
+
     print("PDB Library — Available Materials:")
     for k in list_available():
         n_atoms = len(_LIBRARY[k]["atoms"])

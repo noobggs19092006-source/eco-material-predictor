@@ -9,7 +9,19 @@ import joblib
 ROOT       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(ROOT, "models")
 sys.path.insert(0, os.path.join(ROOT, "src"))
-from data_prep import FEATURE_COLS, TARGET_COLS, TARGET_META
+from data_prep import FEATURES, TARGETS
+TARGET_META = {
+    "Tg_celsius": ("Glass Transition Tg", "°C", "🌡️"),
+    "tensile_strength_MPa": ("Tensile Strength", "MPa", "💪"),
+    "youngs_modulus_GPa": ("Young's Modulus", "GPa", "📏"),
+    "density_gcm3": ("Density", "g/cm³", "⚖️"),
+    "thermal_conductivity_WmK": ("Thermal Conductivity", "W/m·K", "🔥"),
+    "elongation_at_break_pct": ("Flex (%)", "%", "🧬"),
+    "dielectric_constant": ("Dielectric Constant", "ε", "⚡"),
+    "water_absorption_pct": ("Water Absorption", "%", "💧"),
+    "oxygen_permeability_barrer": ("O₂ Permeability", "Barrer", "🌬️"),
+    "log10_elec_conductivity": ("Elec. Conductivity", "log(S/m)", "🔋")
+}
 
 
 def _load_bundle():
@@ -47,23 +59,26 @@ def predict(features: dict) -> dict:
         input_used   → full engineered feature dict
     """
     feat = dict(features)
-    feat["mw_flexibility"] = feat["repeat_unit_MW"] * feat["backbone_flexibility"]
-    feat["polar_hbond"]    = feat["polarity_index"] * feat["hydrogen_bond_capacity"]
-
-    X_raw = pd.DataFrame([feat])[FEATURE_COLS]
     scaler = _load_scaler()
-    X_sc   = pd.DataFrame(scaler.transform(X_raw), columns=FEATURE_COLS)
-    X_np   = X_sc.values
+    features_ordered = scaler.feature_names_in_
+    
+    # Pack the exact expected features IN THE EXACT ORDER
+    payload = {f: feat.get(f, 0.0) for f in features_ordered}
+    X_raw = pd.DataFrame([payload], columns=features_ordered)
+    
+    # Let sklearn transform the raw aligned numerical structure directly as numpy array
+    X_sc = pd.DataFrame(scaler.transform(X_raw.values), columns=features_ordered)
+    X_np = X_sc.values
 
     bundle  = _load_bundle()
     
     if feat.get("is_alloy", 0) == 1:
-        models = bundle["alloy"]
+        models = bundle["metal"]
     else:
         models = bundle["polymer"]
 
     predictions, confidence = {}, {}
-    for target in TARGET_COLS:
+    for target in TARGETS:
         m        = models[target]
         rf_trees = np.array([e.predict(X_np) for e in m["rf"].estimators_])
         rf_mean  = rf_trees.mean(axis=0)

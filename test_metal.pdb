@@ -1,0 +1,13 @@
+REMARK  Eco-Material Predictor — Crystal Structure PDB
+REMARK  Material : Generic Metal Lattice (BCC)
+REMARK  
+HETATM    1  FE  MET A   1       0.000   0.000   0.000  1.00  0.00          FE
+HETATM    2  FE  MET A   1       1.430   1.430   1.430  1.00  0.00          FE
+HETATM    3  FE  MET A   1       0.000   0.000   2.860  1.00  0.00          FE
+HETATM    4  FE  MET A   1       0.000   2.860   0.000  1.00  0.00          FE
+HETATM    5  FE  MET A   1       0.000   2.860   2.860  1.00  0.00          FE
+HETATM    6  FE  MET A   1       2.860   0.000   0.000  1.00  0.00          FE
+HETATM    7  FE  MET A   1       2.860   0.000   2.860  1.00  0.00          FE
+HETATM    8  FE  MET A   1       2.860   2.860   0.000  1.00  0.00          FE
+HETATM    9  FE  MET A   1       2.860   2.860   2.860  1.00  0.00          FE
+END

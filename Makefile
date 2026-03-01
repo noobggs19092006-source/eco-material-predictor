@@ -33,6 +33,7 @@ evaluate: _check_venv
 
 ## predict: launch the interactive CLI predictor
 predict: _check_venv
+	@echo "🌿 Launching Eco-Material Innovation Engine CLI..."
 	$(VENV) src/cli.py
 
 ## app: launch FastAPI backend + React frontend

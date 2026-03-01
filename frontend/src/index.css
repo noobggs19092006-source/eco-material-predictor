@@ -243,6 +243,12 @@ body {
   border: 1.5px solid var(--blue);
 }
 
+.mode-btn-orange {
+  background: rgba(230, 126, 34, 0.2);
+  color: #e67e22;
+  border: 1.5px solid #e67e22;
+}
+
 /* ── Slider ── */
 .slider-row {
   margin-bottom: 20px;
@@ -296,6 +302,16 @@ input[type=range].blue-slider::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--blue);
   box-shadow: 0 0 10px rgba(52, 152, 219, 0.7);
+  cursor: pointer;
+}
+
+input[type=range].orange-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e67e22;
+  box-shadow: 0 0 10px rgba(230, 126, 34, 0.7);
   cursor: pointer;
 }
 

@@ -21,7 +21,7 @@ MATCH_KEYS = [
     "tensile_strength_MPa",
     "youngs_modulus_GPa",
     "Tg_celsius",
-    "density_gcm3",
+    "density_g_cm3",
     "elongation_at_break_pct",
 ]
 
@@ -35,7 +35,7 @@ def list_petroleum_materials(material_class=None) -> list[str]:
     df = _load()
     mask = (df["eco_score"] < 0.6)
     if material_class:
-        mask &= (df["material_class"] == material_class)
+        mask &= (df["is_alloy"] == (1 if material_class == "metal" else 0))
     dirty = df[mask]
     
     res = dirty["material_name"].unique().tolist()

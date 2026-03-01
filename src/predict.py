@@ -52,6 +52,7 @@ def _build_feature_row(features: dict) -> np.ndarray:
     Build an ordered feature array from a dict.
     Computes interaction terms if not provided.
     """
+
     mw   = float(features.get("repeat_unit_MW", 0))
     flex = float(features.get("backbone_flexibility", 0))
     pol  = float(features.get("polarity_index", 0))
@@ -89,8 +90,13 @@ def predict(features: dict) -> dict:
     -------
     dict with keys:
         predictions   : {property_name: float}
-        confidence_pm : {property_name: float}  ← ±std from RF members
+        confidence_pm : {property_name: float}  <- std from RF members
     """
+    if hasattr(features, "model_dump"):
+        features = features.model_dump()
+    elif hasattr(features, "dict"):
+        features = features.dict()
+        
     X      = _build_feature_row(features)
     is_alloy = int(features.get("is_alloy", 0))
     model  = _ALLOY_MODEL if is_alloy else _POLY_MODEL

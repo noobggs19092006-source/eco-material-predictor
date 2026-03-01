@@ -2,6 +2,8 @@ FROM nikolaik/python-nodejs:python3.12-nodejs20-slim
 
 WORKDIR /app
 
+ENV PYTHONUNBUFFERED=1
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y make && rm -rf /var/lib/apt/lists/*
 

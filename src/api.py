@@ -2,6 +2,7 @@ import os, sys, traceback
 import pandas as pd
 import numpy as np
 import joblib
+import threading
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -18,18 +19,26 @@ ADV_MODEL_PATH = os.path.join(ROOT, "models", "advanced_alloy_predictor.pkl")
 MODEL_PATH = os.path.join(ROOT, "models", "material_predictor.pkl")
 SCALER_PATH = os.path.join(ROOT, "models", "scaler.pkl")
 
-try:
-    bundle  = joblib.load(MODEL_PATH)
-    scaler  = joblib.load(SCALER_PATH)
-    
-    # Load original raw data for string-based name/alternative lookups in the Green Tab
-    df_raw = pd.read_csv(os.path.join(ROOT, "data", "raw", "materials_dataset.csv"))
-    
-    print("✅ Base Models & Name Database Loaded successfully")
-except Exception as e:
-    print(f"❌ Failed to load base models:")
-    traceback.print_exc()
-    bundle = scaler = df_raw = None
+bundle = None
+scaler = None
+df_raw = None
+
+def load_models_bg():
+    global bundle, scaler, df_raw
+    try:
+        print("⏳ Loading ML models in background...", flush=True)
+        b = joblib.load(MODEL_PATH)
+        s = joblib.load(SCALER_PATH)
+        d = pd.read_csv(os.path.join(ROOT, "data", "raw", "materials_dataset.csv"))
+        bundle, scaler, df_raw = b, s, d
+        print("✅ Base Models & Name Database Loaded successfully", flush=True)
+    except Exception as e:
+        print(f"❌ Failed to load base models:", flush=True)
+        traceback.print_exc()
+
+@app.on_event("startup")
+def startup_event():
+    threading.Thread(target=load_models_bg, daemon=True).start()
 
 class PredictionInput(BaseModel):
     inputs: dict

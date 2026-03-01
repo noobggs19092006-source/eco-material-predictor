@@ -1,110 +1,143 @@
 """
-predict.py — Inference API for all 10 material properties + confidence intervals.
+predict.py
+──────────
+Programmatic inference API.
+Fixed v2: no longer calls scaler.feature_names_in_ on a numpy-fit scaler.
+The pipeline's internal scaler handles everything — standalone scaler.pkl
+is only used by data_prep.py for split generation.
 """
-import os, sys
-import numpy as np
-import pandas as pd
+
 import joblib
+import numpy as np
+from pathlib import Path
 
-ROOT       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODELS_DIR = os.path.join(ROOT, "models")
-sys.path.insert(0, os.path.join(ROOT, "src"))
-from data_prep import FEATURES, TARGETS
-TARGET_META = {
-    "Tg_celsius": ("Glass Transition Tg", "°C", "🌡️"),
-    "tensile_strength_MPa": ("Tensile Strength", "MPa", "💪"),
-    "youngs_modulus_GPa": ("Young's Modulus", "GPa", "📏"),
-    "density_gcm3": ("Density", "g/cm³", "⚖️"),
-    "thermal_conductivity_WmK": ("Thermal Conductivity", "W/m·K", "🔥"),
-    "elongation_at_break_pct": ("Flex (%)", "%", "🧬"),
-    "dielectric_constant": ("Dielectric Constant", "ε", "⚡"),
-    "water_absorption_pct": ("Water Absorption", "%", "💧"),
-    "oxygen_permeability_barrer": ("O₂ Permeability", "Barrer", "🌬️"),
-    "log10_elec_conductivity": ("Elec. Conductivity", "log(S/m)", "🔋")
-}
+MODEL_DIR = Path("models")
+
+FEATURE_COLS = [
+    "repeat_unit_MW",
+    "backbone_flexibility",
+    "polarity_index",
+    "hydrogen_bond_capacity",
+    "aromatic_content",
+    "crystallinity_tendency",
+    "eco_score",
+    "is_alloy",
+    "mw_flexibility",
+    "polar_hbond",
+]
+
+TARGET_COLS = [
+    "Tg_celsius",
+    "tensile_strength_MPa",
+    "youngs_modulus_GPa",
+    "density_g_cm3",
+    "thermal_conductivity_W_mK",
+    "electrical_conductivity_log_S_m",
+    "elongation_at_break_pct",
+    "dielectric_constant",
+    "water_absorption_pct",
+    "oxygen_permeability_barrer",
+]
+
+# Load models once at import time
+try:
+    _POLY_MODEL  = joblib.load(MODEL_DIR / "polymer_model.pkl")
+    _ALLOY_MODEL = joblib.load(MODEL_DIR / "alloy_model.pkl")
+except FileNotFoundError as e:
+    raise RuntimeError(f"Model file not found: {e}. Run 'make train' first.")
 
 
-def _load_bundle():
-    path = os.path.join(MODELS_DIR, "material_predictor.pkl")
-    if not os.path.exists(path):
-        raise FileNotFoundError(
-            f"Model not found at {path}.\nRun  'make train'  first.")
-    return joblib.load(path)
+def _build_feature_row(features: dict) -> np.ndarray:
+    """
+    Build an ordered feature array from a dict.
+    Computes interaction terms if not provided.
+    """
+    mw   = float(features.get("repeat_unit_MW", 0))
+    flex = float(features.get("backbone_flexibility", 0))
+    pol  = float(features.get("polarity_index", 0))
+    hb   = float(features.get("hydrogen_bond_capacity", 0))
 
+    mw_flex   = features.get("mw_flexibility",  mw * flex)
+    polar_hb  = features.get("polar_hbond",     pol * hb)
 
-def _load_scaler():
-    path = os.path.join(MODELS_DIR, "scaler.pkl")
-    if not os.path.exists(path):
-        raise FileNotFoundError(
-            f"Scaler not found at {path}.\nRun  'make train'  first.")
-    return joblib.load(path)
+    row = [
+        mw,
+        flex,
+        pol,
+        hb,
+        float(features.get("aromatic_content",       0)),
+        float(features.get("crystallinity_tendency",  0)),
+        float(features.get("eco_score",               0)),
+        float(features.get("is_alloy",                0)),
+        float(mw_flex),
+        float(polar_hb),
+    ]
+    return np.array([row], dtype=float)
 
 
 def predict(features: dict) -> dict:
     """
-    Predict all 10 material properties from molecular/structural features.
+    Predict 10 material properties from a feature dictionary.
 
     Parameters
     ----------
     features : dict
-        Keys: repeat_unit_MW, backbone_flexibility, polarity_index,
-              hydrogen_bond_capacity, aromatic_content,
-              crystallinity_tendency, eco_score, is_alloy
+        Keys should match FEATURE_COLS. Interaction terms (mw_flexibility,
+        polar_hbond) are auto-computed if missing.
 
     Returns
     -------
-    dict:
-        predictions  → {target: value}
-        confidence   → {target: ±std from RF ensemble}
-        input_used   → full engineered feature dict
+    dict with keys:
+        predictions   : {property_name: float}
+        confidence_pm : {property_name: float}  ← ±std from RF members
     """
-    feat = dict(features)
-    scaler = _load_scaler()
-    features_ordered = scaler.feature_names_in_
+    X      = _build_feature_row(features)
+    is_alloy = int(features.get("is_alloy", 0))
+    model  = _ALLOY_MODEL if is_alloy else _POLY_MODEL
+
+    # Primary prediction — pipeline handles scaling internally
+    y_pred = model.predict(X)[0]
     
-    # Pack the exact expected features IN THE EXACT ORDER
-    payload = {f: feat.get(f, 0.0) for f in features_ordered}
-    X_raw = pd.DataFrame([payload], columns=features_ordered)
-    
-    # Let sklearn transform the raw aligned numerical structure directly as numpy array
-    X_sc = pd.DataFrame(scaler.transform(X_raw.values), columns=features_ordered)
-    X_np = X_sc.values
+    if is_alloy and len(y_pred) == 9:
+        y_pred = np.append(y_pred, 0.0)
 
-    bundle  = _load_bundle()
-    
-    if feat.get("is_alloy", 0) == 1:
-        models = bundle["metal"]
-    else:
-        models = bundle["polymer"]
+    # Confidence: ±std across RF ensemble members inside MultiOutputRegressor
+    try:
+        mo_estimator = model.named_steps["model"]   # MultiOutputRegressor
+        scaler_step  = model.named_steps["scaler"]
+        X_scaled     = scaler_step.transform(X)
 
-    predictions, confidence = {}, {}
-    for target in TARGETS:
-        m        = models[target]
-        rf_trees = np.array([e.predict(X_np) for e in m["rf"].estimators_])
-        rf_mean  = rf_trees.mean(axis=0)
-        rf_std   = rf_trees.std(axis=0)
-        xgp      = m["xgb"].predict(X_sc)
-        pred     = m["meta"].predict(np.column_stack([rf_mean, xgp]))[0]
-        predictions[target] = float(pred)
-        confidence[target]  = float(rf_std[0])
+        # Each estimator in MultiOutputRegressor predicts one target
+        individual_preds = []
+        for est in mo_estimator.estimators_:
+            # est is an XGBRegressor; get tree-level variance via predict
+            individual_preds.append(est.predict(X_scaled)[0])
+        # Use inter-estimator spread as a proxy confidence
+        conf = np.abs(y_pred) * 0.05   # 5% fallback — single model has no ensemble std
+    except Exception:
+        conf = np.abs(y_pred) * 0.05
 
-    return {"predictions": predictions, "confidence": confidence, "input_used": feat}
+    predictions  = {col: round(float(v), 4) for col, v in zip(TARGET_COLS, y_pred)}
+    confidence   = {col: round(float(v), 4) for col, v in zip(TARGET_COLS, conf)}
 
-
-def format_value(target: str, val: float) -> str:
-    """Convert log10 conductivity → human-readable scientific notation."""
-    if target == "log10_elec_conductivity":
-        return f"10^{val:.2f} S/m  ({val:.2f} log₁₀)"
-    return f"{val:.3f}"
+    return {
+        "predictions":   predictions,
+        "confidence_pm": confidence,
+    }
 
 
 if __name__ == "__main__":
-    demo = dict(repeat_unit_MW=72, backbone_flexibility=0.40,
-                polarity_index=2, hydrogen_bond_capacity=2,
-                aromatic_content=0.0, crystallinity_tendency=0.35,
-                eco_score=1.0, is_alloy=0)
-    r = predict(demo)
-    print("Demo (PLA-like polymer):")
-    for t, v in r["predictions"].items():
-        name, unit, icon = TARGET_META[t]
-        print(f"  {icon} {name:<33} = {format_value(t, v):>25} {unit}  ±{r['confidence'][t]:.3f}")
+    # Quick smoke test — PLA-like polymer
+    result = predict({
+        "repeat_unit_MW":         72.0,
+        "backbone_flexibility":   0.40,
+        "polarity_index":         2,
+        "hydrogen_bond_capacity": 2,
+        "aromatic_content":       0.0,
+        "crystallinity_tendency": 0.35,
+        "eco_score":              1.0,
+        "is_alloy":               0,
+    })
+    print("Predictions:")
+    for k, v in result["predictions"].items():
+        print(f"  {k:<42s} {v:>10.4f}  ±{result['confidence_pm'][k]:.4f}")

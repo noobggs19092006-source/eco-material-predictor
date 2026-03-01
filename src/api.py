@@ -5,8 +5,11 @@ FastAPI backend for the Eco-Material Predictor.
 New in v2: /carbon-impact endpoint returns real ICE Database CO2 values.
 """
 
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 import joblib
 import numpy as np
@@ -33,6 +36,12 @@ try:
     ALLOY_MODEL = joblib.load(MODEL_DIR / "alloy_model.pkl")
 except FileNotFoundError:
     raise RuntimeError("Models not found. Run 'make train' first.")
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    df_raw = pd.read_csv(os.path.join(ROOT, "data", "raw", "materials_dataset.csv"))
+except Exception:
+    df_raw = None
 
 FEATURE_COLS = [
     "repeat_unit_MW", "backbone_flexibility", "polarity_index",
@@ -66,14 +75,18 @@ ICE_CARBON_DB = {
 
 # ── Request / Response schemas ─────────────────────────────────────────────────
 class MaterialFeatures(BaseModel):
-    repeat_unit_MW:          float = Field(..., ge=10, le=600)
-    backbone_flexibility:    float = Field(..., ge=0.0, le=1.0)
-    polarity_index:          float = Field(..., ge=0.0, le=3.0)
-    hydrogen_bond_capacity:  float = Field(..., ge=0.0, le=5.0)
-    aromatic_content:        float = Field(..., ge=0.0, le=1.0)
-    crystallinity_tendency:  float = Field(..., ge=0.0, le=1.0)
-    eco_score:               float = Field(..., ge=0.0, le=1.0)
-    is_alloy:                int   = Field(..., ge=0, le=1)
+    repeat_unit_MW:          float = 0.0
+    backbone_flexibility:    float = 0.0
+    polarity_index:          float = 0.0
+    hydrogen_bond_capacity:  float = 0.0
+    aromatic_content:        float = 0.0
+    crystallinity_tendency:  float = 0.0
+    eco_score:               float = 0.0
+    is_alloy:                int   = 0
+
+class PredictionInput(BaseModel):
+    inputs: dict
+    mode: str
 
 class CarbonQuery(BaseModel):
     material_name:    str
@@ -108,8 +121,11 @@ def list_materials():
 
 
 @app.post("/predict")
-def predict(features: MaterialFeatures):
+def predict(data: PredictionInput):
     """Predict 10 material properties with confidence intervals."""
+    payload = {col: data.inputs.get(col, 0.0) for col in FEATURE_COLS}
+    payload["is_alloy"] = 1 if data.mode in ("metal", "alloy") else 0
+    features = MaterialFeatures(**payload)
     X     = featurize(features)
     model = ALLOY_MODEL if features.is_alloy else POLY_MODEL
 
@@ -216,6 +232,39 @@ def recommend(material_name: str, top_k: int = 3):
     return {
         "query_material":   material_name,
         "base_co2_per_kg":  base_co2,
-        "recommendations":  candidates[:top_k],
         "source":           "ICE Database v2.0",
     }
+
+@app.get("/materials/petroleum")
+def petroleum():
+    if df_raw is None:
+        return []
+    dirty = df_raw[df_raw["eco_score"] < 0.6]
+    res_df = dirty.drop_duplicates(subset=["material_name"]).sort_values("material_name")
+    res = res_df[["material_name", "eco_score", "tensile_strength_MPa", "Tg_celsius"]].to_dict("records")
+    return res
+
+@app.get("/materials/alternatives/{material_name}")
+def alternatives(material_name: str):
+    from src.recommend import find_green_alternatives
+    res = find_green_alternatives(material_name, top_n=3)
+    if res["error"]:
+        raise HTTPException(status_code=404, detail=res["error"])
+        
+    alts = res["alternatives"]
+    for a in alts:
+        if "performance_match_pct" in a:
+            a["match_pct"] = a["performance_match_pct"]
+    return alts
+
+# --- Serve React Frontend ---
+frontend_path = os.path.join(ROOT, "frontend", "dist")
+if os.path.exists(frontend_path):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_path, "assets")), name="assets")
+    
+    @app.get("/{catchall:path}")
+    def serve_react_app(catchall: str):
+        file_path = os.path.join(frontend_path, catchall)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(frontend_path, "index.html"))

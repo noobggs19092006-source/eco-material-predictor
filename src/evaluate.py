@@ -49,7 +49,7 @@ def r2_manual(y_true, y_pred):
 
 def plot_actual_vs_predicted(model, X, y, df, label: str, fig_num: int):
     y_pred = model.predict(X)
-    n_targets = y.shape[1]
+    n_targets = y_pred.shape[1]
     cols = 5
     rows = 2
     fig, axes = plt.subplots(rows, cols, figsize=(20, 8))
@@ -57,6 +57,10 @@ def plot_actual_vs_predicted(model, X, y, df, label: str, fig_num: int):
                  fontsize=14, fontweight="bold")
 
     for i, (ax, col) in enumerate(zip(axes.flat, TARGET_COLS)):
+        if i >= n_targets:
+            ax.set_visible(False)
+            continue
+            
         ax.scatter(y[:, i], y_pred[:, i], alpha=0.6, s=25,
                    color="#2ecc71" if "Polymer" in label else "#3498db")
         mn, mx = min(y[:, i].min(), y_pred[:, i].min()), \
@@ -210,6 +214,8 @@ def generate_text_report(model, X, y, label: str):
     y_pred = model.predict(X)
     lines  = [f"{label} — Evaluation Report", "=" * 55, ""]
     for i, col in enumerate(TARGET_COLS):
+        if i >= y_pred.shape[1]:
+            continue
         mae  = np.mean(np.abs(y[:, i] - y_pred[:, i]))
         rmse = np.sqrt(np.mean((y[:, i] - y_pred[:, i]) ** 2))
         r2   = r2_manual(y[:, i], y_pred[:, i])
@@ -243,7 +249,7 @@ def main():
     plot_feature_importance(poly_model, alloy_model)
     plot_carbon_footprint(df)
     plot_shap_summary(poly_model,  X_poly,  "Polymers", 5)
-    plot_shap_summary(alloy_model, X_alloy, "Alloys",   6)
+    plot_shap_summary(alloy_model, X_alloy, "Alloys",   7)
     generate_text_report(poly_model,  X_poly,  y_poly,  "polymers")
     generate_text_report(alloy_model, X_alloy, y_alloy, "alloys")
 

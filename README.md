@@ -313,6 +313,12 @@ git push
 # Installs Python + Node.js, trains models, builds React, goes live
 ```
 
+### ⚠️ Free Tier Constraints (502 Bad Gateway)
+Render's free tier has a strict **512 MB RAM limit**. 
+If you encounter a `502 Bad Gateway` or `No open ports detected` error during deployment:
+1. **Model Size:** Our ensemble models (`polymer_model.pkl` and `alloy_model.pkl`) uncompress memory-map to ~220-300MB RAM. Do NOT increase `n_estimators` beyond `300` in `src/train.py`, or the Linux kernel's OOM (Out-of-Memory) killer will silently terminate your FastAPI container.
+2. **Startup Timeouts:** The `src/api.py` utilizes asynchronous static mounts to bind `$PORT` instantly before unpacking the heavy ML models. This guarantees passing Render's 60-second health check.
+
 ---
 
 ## ✅ Test Suite

@@ -303,6 +303,14 @@ _BASE_KEYS = ["PLA", "PHB", "PBS", "PEF", "CELLULOSE", "CHITOSAN", "PHA"]
 def list_available() -> list:
     return _BASE_KEYS
 
+def list_available_materials() -> list:
+    """Alias used by test suite."""
+    return _BASE_KEYS
+
+# Alias — used by test suite and API
+def list_available_materials() -> list:
+    return _BASE_KEYS
+
 
 def get_pdb(key: str, chain_id: str = "A") -> str:
     """
